@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>JPG to PDF Converter</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        #noticeboard {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 30px;
+            background: rgb(7, 233, 218);
+            color: red;
+            font-size: 16px;
+            font-weight: bold;
+            overflow: hidden;
+            z-index: 9999;
+        }
+
+        .notice {
+            position: absolute;
+            top: 7px;
+            white-space: nowrap;
+            animation: moveText 30s linear infinite;
+        }
+
+        @keyframes moveText {
+            from {
+                left: -100%;
+            }
+
+            to {
+                left: 100%;
+            }
+        }
+
+        .mainscreen {
+            background: #ff8c00;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding-top: 40px;
+        }
+
+        .container {
+            background: white;
+            width: 90%;
+            max-width: 600px;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .upload-btn {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 15px 35px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 6px 15px rgba(40, 167, 69, 0.5);
+            transition: 0.3s;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-3px);
+        }
+
+        #fileName {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        .active-btn:hover {
+            animation: bounce 0.6s ease;
+            transform: scale(1.12);
+            box-shadow: 0 10px 30px rgba(0, 255, 255, 0.8);
+        }
+
+        @keyframes bounce {
+
+            0% {
+                transform: scale(1);
+            }
+
+            30% {
+                transform: scale(1.18);
+            }
+
+            50% {
+                transform: scale(1.08);
+            }
+
+            70% {
+                transform: scale(1.15);
+            }
+
+            100% {
+                transform: scale(1.12);
+            }
+
+        }
+
+
+
+
+        #convertBtn {
+            display: block;
+            margin: 30px auto;
+            background: cyan;
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 15px rgba(0, 255, 255, 0.5);
+        }
+
+        #downloadLink {
+            display: none;
+            margin: 20px auto 0;
+            width: fit-content;
+            background: red;
+            color: white;
+            text-decoration: none;
+            padding: 15px 35px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 6px 15px rgba(255, 0, 0, 0.5);
+        }
+
+        .loader {
+            width: 24px;
+            height: 24px;
+            border: 4px solid white;
+            border-top: 4px solid transparent;
+            border-radius: 50%;
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media(max-width:768px) {
+
+            .container {
+                padding: 25px;
+            }
+
+            .upload-btn,
+            #convertBtn,
+            #downloadLink {
+                width: 100%;
+            }
+
+            h1 {
+                font-size: 28px;
+            }
+        }
+
+
+
+        #darkModeBtn {
+            position: fixed;
+            top: 40px;
+            right: 20px;
+            width: 55px;
+            height: 55px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            background: #222;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            z-index: 10000;
+            transition: all 0.3s ease;
+        }
+
+        #darkModeBtn:hover {
+            transform: scale(1.15) rotate(15deg);
+        }
+
+        body.dark-mode {
+            background: #121212;
+        }
+
+        body.dark-mode .container {
+            background: #1f1f1f;
+            color: white;
+        }
+
+        body.dark-mode h1 {
+            color: white;
+        }
+
+        body.dark-mode #fileName {
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .mainscreen {
+            background: #0f172a;
+        }
+
+        body.dark-mode #darkModeBtn {
+            background: #ffd700;
+            color: black;
+        }
+
+
+        body,
+        .container,
+        .mainscreen,
+        #darkModeBtn,
+        h1,
+        #fileName {
+            transition: all 0.7s ease;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="noticeboard">
+        <p class="notice">
+            This Website is created By Md Tausif Ali & use it only for personal purpose not for commercial purpose
+        </p>
+    </div>
+
+    <div class="mainscreen">
+        <button id="darkModeBtn">🌙</button>
+
+        <div class="container">
+
+            <h1>JPG to PDF Converter</h1>
+
+            <label for="imageInput" class="upload-btn">
+                Choose JPG Files
+            </label>
+
+            <input type="file" id="imageInput" accept=".jpg,.jpeg,image/jpeg" multiple>
+
+            <p id="fileName"></p>
+
+            <button id="convertBtn" onclick="convertToPDF()">
+                Convert To PDF
+            </button>
+
+            <a id="downloadLink">
+                Download PDF
+            </a>
+
+        </div>
+ <footer>
+           <p style="margin-top:20px;position:absolute; bottom:4px; right: 0px;  color:  #d80e29;">
+© 2026 Md Tausif Ali. All Rights Reserved.
+</p>
+</footer>
+    </div>
+
+    <script>
+
+        document.getElementById("imageInput")
+            .addEventListener("change", function () {
+
+                const count = this.files.length;
+
+                if (count > 0) {
+                    document.getElementById("fileName").textContent =
+                        count + " JPG file(s) selected";
+                    document.getElementById("convertBtn")
+                        .classList.add("active-btn");
+                }
+            });
+
+        async function convertToPDF() {
+
+            const fileInput =
+                document.getElementById("imageInput");
+
+            const convertBtn =
+                document.getElementById("convertBtn");
+
+            const files = fileInput.files;
+
+            if (files.length < 1) {
+                alert("Please select at least 1 JPG image.");
+                return;
+            }
+
+            if (files.length > 15) {
+                alert("Maximum 15 JPG images allowed.");
+                return;
+            }
+
+            convertBtn.disabled = true;
+            convertBtn.innerHTML =
+                '<span class="loader"></span>';
+
+            await new Promise(resolve =>
+                setTimeout(resolve, 5000));
+
+            const { jsPDF } = window.jspdf;
+
+            const pdf = new jsPDF();
+
+            for (let i = 0; i < files.length; i++) {
+
+                const imageData =
+                    await new Promise((resolve) => {
+
+                        const reader =
+                            new FileReader();
+
+                        reader.onload = function (e) {
+
+                            const img =
+                                new Image();
+
+                            img.onload = function () {
+                                resolve(img);
+                            };
+
+                            img.src =
+                                e.target.result;
+                        };
+
+                        reader.readAsDataURL(files[i]);
+                    });
+
+                const pdfWidth =
+                    pdf.internal.pageSize.getWidth();
+
+                const pdfHeight =
+                    (imageData.height * pdfWidth) /
+                    imageData.width;
+
+                if (i > 0) {
+                    pdf.addPage();
+                }
+
+                pdf.addImage(
+                    imageData,
+                    "JPEG",
+                    0,
+                    0,
+                    pdfWidth,
+                    pdfHeight
+                );
+            }
+
+            const pdfBlob =
+                pdf.output("blob");
+
+            const downloadLink =
+                document.getElementById("downloadLink");
+
+            downloadLink.href =
+                URL.createObjectURL(pdfBlob);
+
+            downloadLink.download =
+                "converted.pdf";
+
+            downloadLink.textContent =
+                "Download PDF";
+
+            downloadLink.style.display =
+                "inline-block";
+
+            convertBtn.innerHTML =
+                "Convert To PDF";
+
+            convertBtn.disabled =
+                false;
+        }
+
+
+
+        const darkModeBtn =
+            document.getElementById("darkModeBtn");
+
+        if (localStorage.getItem("theme") === "dark") {
+            document.body.classList.add("dark-mode");
+            darkModeBtn.textContent = "☀️";
+        }
+
+        darkModeBtn.addEventListener("click", () => {
+
+            document.body.classList.toggle("dark-mode");
+
+            if (document.body.classList.contains("dark-mode")) {
+
+                darkModeBtn.textContent = "☀️";
+
+                localStorage.setItem(
+                    "theme",
+                    "dark"
+                );
+
+            } else {
+
+                darkModeBtn.textContent = "🌙";
+
+                localStorage.setItem(
+                    "theme",
+                    "light"
+                );
+            }
+
+        });
+
+    </script>
+
+</body>
+
+</html>

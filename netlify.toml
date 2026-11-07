@@ -1,0 +1,4 @@
+[build]
+  publish = "."
+
+# This is a static HTML website. The PDF Compressor API runs separately.

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Image Compressor</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    background:#ff8c00;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+.container{
+    width:90%;
+    max-width:600px;
+    background:white;
+    padding:40px;
+    border-radius:20px;
+    text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+}
+
+h1{
+    margin-bottom:25px;
+    color:#333;
+}
+
+input[type=file]{
+    display:none;
+}
+
+.upload-btn{
+    display:inline-block;
+    background:#28a745;
+    color:white;
+    padding:15px 35px;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:18px;
+    font-weight:bold;
+    box-shadow:0 6px 15px rgba(40,167,69,.5);
+}
+
+#targetKB{
+    width:100%;
+    margin-top:20px;
+    padding:12px;
+    border:2px solid #ddd;
+    border-radius:10px;
+    text-align:center;
+    font-size:16px;
+}
+
+#compressBtn{
+    margin-top:20px;
+    background:cyan;
+    color:white;
+    border:none;
+    padding:15px 35px;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:18px;
+    font-weight:bold;
+}
+
+#downloadImage{
+    display:none;
+    margin-top:20px;
+    background:red;
+    color:white;
+    text-decoration:none;
+    padding:15px 35px;
+    border-radius:12px;
+    font-size:18px;
+    font-weight:bold;
+}
+
+#fileInfo,
+#resultInfo{
+    margin-top:15px;
+    color:#333;
+    font-weight:bold;
+    line-height:1.8;
+}
+
+.loader{
+    width:24px;
+    height:24px;
+    border:4px solid white;
+    border-top:4px solid transparent;
+    border-radius:50%;
+    display:inline-block;
+    animation:spin 1s linear infinite;
+}
+
+@keyframes spin{
+    to{
+        transform:rotate(360deg);
+    }
+}
+
+@keyframes bounce{
+    0%,100%{
+        transform:translateY(0);
+    }
+    50%{
+        transform:translateY(-8px);
+    }
+}
+
+.upload-btn:hover,
+#compressBtn:hover{
+    animation:bounce .8s infinite;
+}
+
+@media(max-width:768px){
+
+    .upload-btn,
+    #compressBtn,
+    #downloadImage{
+        width:100%;
+    }
+
+    .container{
+        padding:25px;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Image Compressor</h1>
+
+<label for="compressInput" class="upload-btn">
+Choose Image
+</label>
+
+<input
+type="file"
+id="compressInput"
+accept="image/jpeg,image/png,image/jpg">
+
+<p id="fileInfo"></p>
+
+<input
+type="number"
+id="targetKB"
+placeholder="Enter Target Size (KB)"
+disabled>
+
+<button id="compressBtn">
+Compress Image
+</button>
+
+<p id="resultInfo"></p>
+
+<a id="downloadImage">
+Download Compressed Image
+</a>
+
+</div>
+
+<script>
+
+const imageInput =
+document.getElementById("compressInput");
+
+imageInput.addEventListener("change",function(){
+
+    const file = this.files[0];
+
+    if(!file) return;
+
+    document
+    .getElementById("targetKB")
+    .disabled = false;
+
+    let name = file.name;
+
+    if(name.length > 25){
+        name =
+        name.substring(0,25) + "...";
+    }
+
+    document
+    .getElementById("fileInfo")
+    .innerHTML =
+
+    "File: " + name +
+    "<br>Size: " +
+    (file.size/1024).toFixed(2)
+    + " KB";
+});
+
+document
+.getElementById("compressBtn")
+.addEventListener(
+"click",
+compressImage
+);
+
+function compressImage(){
+
+    const file =
+    imageInput.files[0];
+
+    if(!file){
+        alert("Please select image");
+        return;
+    }
+
+    const targetKB =
+    parseInt(
+    document.getElementById(
+    "targetKB"
+    ).value);
+
+    if(!targetKB){
+        alert("Enter target size");
+        return;
+    }
+
+    const btn =
+    document.getElementById(
+    "compressBtn"
+    );
+
+    btn.innerHTML =
+    '<span class="loader"></span>';
+
+    btn.disabled = true;
+
+    const reader =
+    new FileReader();
+
+    reader.onload = function(e){
+
+        const img =
+        new Image();
+
+        img.onload = function(){
+
+            const canvas =
+            document.createElement(
+            "canvas"
+            );
+
+            canvas.width =
+            img.width;
+
+            canvas.height =
+            img.height;
+
+            const ctx =
+            canvas.getContext("2d");
+
+            ctx.drawImage(
+                img,
+                0,
+                0
+            );
+
+            let quality = 1;
+
+            function tryCompress(){
+
+                canvas.toBlob(
+
+                function(blob){
+
+                    const sizeKB =
+                    blob.size / 1024;
+
+                    if(
+                        sizeKB >
+                        targetKB &&
+                        quality > 0.01
+                    ){
+
+                        quality -= 0.01;
+
+                        tryCompress();
+
+                        return;
+                    }
+
+                    const link =
+                    document.getElementById(
+                    "downloadImage"
+                    );
+
+                    const fileName =
+                    file.name.replace(
+                    /\.[^/.]+$/,
+                    ""
+                    );
+
+                    const finalSize =
+                    sizeKB.toFixed(2);
+
+                    link.href =
+                    URL.createObjectURL(
+                    blob
+                    );
+
+                    link.download =
+                    fileName +
+                    "_" +
+                    Math.round(finalSize) +
+                    "KB.jpg";
+
+                    link.style.display =
+                    "inline-block";
+
+                    document
+                    .getElementById(
+                    "resultInfo"
+                    )
+                    .innerHTML =
+
+                    "Original File: " +
+                    file.name +
+
+                    "<br><br>" +
+
+                    "Original Size: " +
+                    (file.size/1024)
+                    .toFixed(2)
+                    + " KB" +
+
+                    "<br><br>" +
+
+                    "Compressed Size: " +
+                    finalSize +
+                    " KB" +
+
+                    "<br><br>" +
+
+                    "Download File: " +
+
+                    fileName +
+
+                    "_" +
+
+                    Math.round(finalSize) +
+
+                    "KB.jpg";
+
+                    btn.innerHTML =
+                    "Compress Image";
+
+                    btn.disabled =
+                    false;
+
+                },
+
+                "image/jpeg",
+                quality
+
+                );
+            }
+
+            tryCompress();
+        };
+
+        img.src =
+        e.target.result;
+    };
+
+    reader.readAsDataURL(file);
+}
+
+</script>
+
+</body>
+</html>
