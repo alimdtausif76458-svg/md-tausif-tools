@@ -1,15 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
@@ -32,15 +20,12 @@ const supabase = createClient(
     process.env.SUPABASE_PUBLISHABLE_KEY
 );
 
-
 // =====================================
-// SUPABASE AUTHENTICATION MIDDLEWARE
+// SUPABASE AUTHENTICATION
 // =====================================
 
 async function verifyUser(req, res, next) {
-
     try {
-
         const authHeader = req.headers.authorization;
 
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -60,24 +45,21 @@ async function verifyUser(req, res, next) {
         }
 
         req.user = data.user;
-
         next();
 
     } catch (error) {
-
         console.error("Authentication error:", error.message);
 
         return res.status(401).json({
             error: "Authentication failed."
         });
-
     }
-
 }
 
-// Set GS_PATH in hosting environment if Ghostscript is not on PATH.
-// Windows local development uses the user's installed Ghostscript path;
-// Docker/Linux hosting uses the "gs" executable installed by Dockerfile.
+// =====================================
+// GHOSTSCRIPT CONFIGURATION
+// =====================================
+
 const GS_PATH = process.env.GS_PATH || (
     process.platform === "win32"
         ? "C:\\Program Files (x86)\\gs\\gs10.08.0\\bin\\gswin32c.exe"
@@ -91,7 +73,7 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 }
 
 // =====================================
-// CORS
+// CORS CONFIGURATION
 // =====================================
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "*")
@@ -101,24 +83,38 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || "*")
 
 app.use(cors({
     origin: (origin, callback) => {
-        // No Origin is used by health checks / command-line clients.
-        if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+        if (
+            !origin ||
+            allowedOrigins.includes("*") ||
+            allowedOrigins.includes(origin)
+        ) {
             return callback(null, true);
         }
-        return callback(new Error("Origin not allowed by CORS: " + origin));
+
+        return callback(
+            new Error("Origin not allowed by CORS: " + origin)
+        );
     },
+
     exposedHeaders: [
         "X-Output-Size-KB",
         "X-Compression-Percent",
         "X-Target-Reached"
     ],
+
+    // FIXED: Authorization header added
     allowedHeaders: [
         "Content-Type",
-        "X-Job-Id"
+        "X-Job-Id",
+        "Authorization"
     ]
 }));
 
 app.use(express.json());
+
+// =====================================
+// HEALTH CHECK
+// =====================================
 
 app.get("/", (req, res) => {
     res.json({
@@ -126,7 +122,6 @@ app.get("/", (req, res) => {
         service: "MD Tausif Tools PDF Compressor API"
     });
 });
-
 
 // =====================================
 // PROGRESS STORAGE
@@ -139,9 +134,9 @@ function setProgress(jobId, percent, message, status = "processing") {
     if (!jobId) return;
 
     const currentJob = progressJobs.get(jobId) || {
-    history: [],
-    ownerUserId: null
-};
+        history: [],
+        ownerUserId: null
+    };
 
     const update = {
         percent: Math.min(100, Math.max(0, Math.floor(percent))),
@@ -167,18 +162,11 @@ app.get("/progress/:jobId", verifyUser, (req, res) => {
 
     const job = progressJobs.get(req.params.jobId);
 
-    if (!job) {
+    if (!job || job.ownerUserId !== req.user.id) {
         return res.status(404).json({
             error: "Progress job not found"
         });
     }
-
-
-    if (job.ownerUserId !== req.user.id) {
-    return res.status(404).json({
-        error: "Progress job not found"
-    });
-}
 
     res.json({
         percent: job.percent,
@@ -186,7 +174,6 @@ app.get("/progress/:jobId", verifyUser, (req, res) => {
         status: job.status,
         updates: job.history
     });
-
 });
 
 // =====================================
@@ -200,12 +187,10 @@ const storage = multer.diskStorage({
     },
 
     filename: (req, file, cb) => {
-
         const uniqueName =
             Date.now() + "-" + crypto.randomUUID() + ".pdf";
 
         cb(null, uniqueName);
-
     }
 
 });
@@ -228,7 +213,6 @@ const upload = multer({
         } else {
             cb(new Error("Only PDF files are allowed"));
         }
-
     }
 
 });
@@ -238,9 +222,7 @@ const upload = multer({
 // =====================================
 
 function getFileSize(filePath) {
-
     return fs.statSync(filePath).size;
-
 }
 
 // =====================================
@@ -257,53 +239,29 @@ async function compressPDF(
     const args = [
 
         "-sDEVICE=pdfwrite",
-
         "-dCompatibilityLevel=1.4",
-
         "-dNOPAUSE",
-
         "-dBATCH",
-
         "-dQUIET",
-
         "-dSAFER",
-
         "-dDetectDuplicateImages=true",
-
         "-dCompressFonts=true",
-
         "-dSubsetFonts=true",
-
         "-dAutoRotatePages=/None",
-
         "-dDownsampleColorImages=true",
-
         "-dDownsampleGrayImages=true",
-
         "-dDownsampleMonoImages=true",
-
         "-dColorImageDownsampleType=/Bicubic",
-
         "-dGrayImageDownsampleType=/Bicubic",
-
         "-dMonoImageDownsampleType=/Subsample",
-
         "-dColorImageResolution=" + resolution,
-
         "-dGrayImageResolution=" + resolution,
-
         "-dMonoImageResolution=" + resolution,
-
         "-dColorImageDownsampleThreshold=1.0",
-
         "-dGrayImageDownsampleThreshold=1.0",
-
         "-dMonoImageDownsampleThreshold=1.0",
-
         "-dPDFSETTINGS=" + pdfSetting,
-
         "-sOutputFile=" + outputFile,
-
         inputFile
 
     ];
@@ -312,7 +270,6 @@ async function compressPDF(
         windowsHide: true,
         maxBuffer: 20 * 1024 * 1024
     });
-
 }
 
 // =====================================
@@ -322,63 +279,43 @@ async function compressPDF(
 const compressionSettings = {
 
     extreme: {
-
         name: "Extreme Compression",
-
         pdfSetting: "/screen",
-
         resolutions: [
             36, 50, 60, 72, 85, 100,
             120, 150, 180, 220, 300
         ],
-
         strategy: "smallest"
-
     },
 
     recommended: {
-
         name: "Recommended Compression",
-
         pdfSetting: "/ebook",
-
         resolutions: [
             50, 72, 90, 110, 130,
             150, 180, 220, 260, 300
         ],
-
         strategy: "balanced"
-
     },
 
     less: {
-
         name: "Less Compression",
-
         pdfSetting: "/printer",
-
         resolutions: [
             72, 90, 110, 130, 150,
             180, 220, 260, 300
         ],
-
         strategy: "highest"
-
     },
 
     target: {
-
         name: "Target Size",
-
         pdfSetting: "/ebook",
-
         resolutions: [
             36, 50, 60, 72, 85, 100,
             120, 150, 180, 220, 260, 300
         ],
-
         strategy: "target"
-
     }
 
 };
@@ -399,18 +336,16 @@ app.post(
 
         req.jobId = jobId;
 
-    setProgress(
-    jobId,
-    1,
-    "Preparing PDF compression..."
-);
+        setProgress(
+            jobId,
+            1,
+            "Preparing PDF compression..."
+        );
 
-// Save the owner of this compression job
-const job = progressJobs.get(jobId);
-job.ownerUserId = req.user.id;
+        const job = progressJobs.get(jobId);
+        job.ownerUserId = req.user.id;
 
-next();
-
+        next();
     },
 
     upload.single("pdf"),
@@ -426,14 +361,10 @@ next();
 
         try {
 
-            // =====================================
             // CHECK PDF
-            // =====================================
 
             if (!req.file) {
-
                 throw new Error("Please upload a PDF file");
-
             }
 
             inputFile = req.file.path;
@@ -446,9 +377,7 @@ next();
                 "PDF uploaded successfully"
             );
 
-            // =====================================
-            // GET COMPRESSION LEVEL
-            // =====================================
+            // COMPRESSION LEVEL
 
             const compressionLevel =
                 req.body.compressionLevel || "recommended";
@@ -457,14 +386,10 @@ next();
                 compressionSettings[compressionLevel];
 
             if (!settings) {
-
                 throw new Error("Invalid compression level");
-
             }
 
-            // =====================================
             // TARGET SIZE VALIDATION
-            // =====================================
 
             let targetSize = null;
 
@@ -477,32 +402,23 @@ next();
                     targetSize <= 0 ||
                     targetSize > 50000
                 ) {
-
                     throw new Error(
                         "Target size must be between 1 and 50000 KB"
                     );
-
                 }
-
             }
 
-            // =====================================
             // CREATE OUTPUT FILE
-            // =====================================
 
             finalFile = path.join(
                 UPLOAD_DIR,
                 "compressed-" + crypto.randomUUID() + ".pdf"
             );
 
-            // =====================================
-            // GENERATE COMPRESSION CANDIDATES
-            // =====================================
+            // COMPRESSION CANDIDATES
 
             const resolutions = settings.resolutions;
-
             const candidates = [];
-
             const totalTasks = resolutions.length;
 
             setProgress(
@@ -517,9 +433,7 @@ next();
 
                 const candidateFile = path.join(
                     UPLOAD_DIR,
-                    "candidate-" +
-                    crypto.randomUUID() +
-                    ".pdf"
+                    "candidate-" + crypto.randomUUID() + ".pdf"
                 );
 
                 tempFiles.push(candidateFile);
@@ -549,21 +463,14 @@ next();
                         continue;
                     }
 
-                    const outputSize =
-                        getFileSize(candidateFile);
+                    const outputSize = getFileSize(candidateFile);
 
                     if (outputSize > 0) {
-
                         candidates.push({
-
                             file: candidateFile,
-
                             size: outputSize,
-
                             resolution: resolution
-
                         });
-
                     }
 
                 } catch (error) {
@@ -588,19 +495,14 @@ next();
                     resolution +
                     " DPI"
                 );
-
             }
 
-            // =====================================
             // CHECK CANDIDATES
-            // =====================================
 
             if (candidates.length === 0) {
-
                 throw new Error(
                     "PDF compression failed. Please try another PDF."
                 );
-
             }
 
             setProgress(
@@ -609,16 +511,11 @@ next();
                 "Selecting best compressed PDF..."
             );
 
-            // =====================================
-            // REMOVE FILES BIGGER THAN ORIGINAL
-            // =====================================
+            // REMOVE LARGER FILES
 
-            let validCandidates = candidates.filter(
+            const validCandidates = candidates.filter(
                 candidate => candidate.size <= originalSize
             );
-
-            // If every compressed candidate is larger,
-            // use original PDF rather than returning a larger file.
 
             if (validCandidates.length === 0) {
 
@@ -628,27 +525,21 @@ next();
 
                 let bestCandidate = null;
 
-                // =====================================
-                // EXTREME: SMALLEST FILE
-                // =====================================
+                // EXTREME
 
                 if (settings.strategy === "smallest") {
 
                     bestCandidate = validCandidates.reduce(
                         (best, current) => {
-
                             return current.size < best.size
                                 ? current
                                 : best;
-
                         }
                     );
 
                 }
 
-                // =====================================
-                // RECOMMENDED: BALANCED QUALITY
-                // =====================================
+                // RECOMMENDED
 
                 else if (settings.strategy === "balanced") {
 
@@ -662,33 +553,26 @@ next();
                             )
                                 ? current
                                 : best;
-
                         }
                     );
 
                 }
 
-                // =====================================
-                // LESS: HIGHEST AVAILABLE RESOLUTION
-                // =====================================
+                // LESS COMPRESSION
 
                 else if (settings.strategy === "highest") {
 
                     bestCandidate = validCandidates.reduce(
                         (best, current) => {
-
                             return current.resolution > best.resolution
                                 ? current
                                 : best;
-
                         }
                     );
 
                 }
 
-                // =====================================
-                // TARGET: CLOSEST FILE SIZE
-                // =====================================
+                // TARGET SIZE
 
                 else if (settings.strategy === "target") {
 
@@ -704,34 +588,26 @@ next();
                             )
                                 ? current
                                 : best;
-
                         }
                     );
 
                 }
 
                 if (!bestCandidate) {
-
                     throw new Error(
                         "Unable to select compressed PDF"
                     );
-
                 }
 
                 fs.copyFileSync(
                     bestCandidate.file,
                     finalFile
                 );
-
             }
 
-            // =====================================
             // FINAL FILE SIZE
-            // =====================================
 
             const finalSize = getFileSize(finalFile);
-
-            const originalKB = originalSize / 1024;
 
             const outputKB = finalSize / 1024;
 
@@ -748,9 +624,7 @@ next();
                     ? outputKB <= targetSize
                     : false;
 
-            // =====================================
             // RESPONSE HEADERS
-            // =====================================
 
             res.setHeader(
                 "X-Output-Size-KB",
@@ -773,16 +647,12 @@ next();
                 "Preparing compressed PDF for download..."
             );
 
-            // =====================================
             // DOWNLOAD
-            // =====================================
 
             res.download(
                 finalFile,
                 "compressed.pdf",
                 (error) => {
-
-                    // Cleanup uploaded and temporary files
 
                     const filesToDelete = [
                         inputFile,
@@ -792,26 +662,16 @@ next();
 
                     for (const file of filesToDelete) {
 
-                        if (
-                            file &&
-                            fs.existsSync(file)
-                        ) {
-
+                        if (file && fs.existsSync(file)) {
                             try {
-
                                 fs.unlinkSync(file);
-
                             } catch (cleanupError) {
-
                                 console.log(
                                     "Cleanup error:",
                                     cleanupError.message
                                 );
-
                             }
-
                         }
-
                     }
 
                     if (error) {
@@ -839,12 +699,8 @@ next();
 
                     }
 
-                    // Remove progress history after 60 seconds
-
                     setTimeout(() => {
-
                         progressJobs.delete(jobId);
-
                     }, 60000);
 
                 }
@@ -857,8 +713,6 @@ next();
                 error.message
             );
 
-            // Cleanup after error
-
             const filesToDelete = [
                 inputFile,
                 finalFile,
@@ -867,23 +721,13 @@ next();
 
             for (const file of filesToDelete) {
 
-                if (
-                    file &&
-                    fs.existsSync(file)
-                ) {
-
+                if (file && fs.existsSync(file)) {
                     try {
-
                         fs.unlinkSync(file);
-
                     } catch (cleanupError) {
-
                         console.log(cleanupError.message);
-
                     }
-
                 }
-
             }
 
             setProgress(
@@ -894,23 +738,15 @@ next();
             );
 
             setTimeout(() => {
-
                 progressJobs.delete(jobId);
-
             }, 60000);
 
             if (!res.headersSent) {
-
                 res.status(500).json({
-
                     error: error.message
-
                 });
-
             }
-
         }
-
     }
 );
 
@@ -932,23 +768,15 @@ app.use((error, req, res, next) => {
         );
 
         setTimeout(() => {
-
             progressJobs.delete(req.jobId);
-
         }, 60000);
-
     }
 
     if (!res.headersSent) {
-
         res.status(400).json({
-
             error: error.message
-
         });
-
     }
-
 });
 
 // =====================================
@@ -958,13 +786,9 @@ app.use((error, req, res, next) => {
 app.listen(PORT, "0.0.0.0", () => {
 
     console.log("-----------------------------------");
-
     console.log("PDF COMPRESSOR SERVER RUNNING");
-
     console.log("Port: " + PORT);
-
     console.log("Ghostscript executable: " + GS_PATH);
-
     console.log("-----------------------------------");
 
 });
