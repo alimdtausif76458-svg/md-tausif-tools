@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<script>
+    document.documentElement.classList.add("auth-pending");
+</script>
+
+<style>
+    html.auth-pending body {
+        visibility: hidden;
+    }
+</style>
+
 <title>Image Compressor</title>
 
 <style>
@@ -388,6 +398,9 @@ function compressImage(){
 }
 
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
 
 </body>
 </html>

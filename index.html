@@ -6,7 +6,15 @@
 
 <title>MD Tausif Tools</title>
 
+<script>
+document.documentElement.classList.add("auth-pending");
+</script>
+
 <style>
+
+html.auth-pending body {
+    visibility: hidden;
+}
 
 *{
     margin:0;
@@ -32,77 +40,43 @@ body{
     width:95%;
     max-width:1400px;
     margin:30px auto;
-
     display:grid;
-
-    grid-template-columns:
-    repeat(auto-fit,minmax(280px,1fr));
-
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
     gap:25px;
 }
 
 .card{
-
     background:white;
-
     border-radius:18px;
-
     padding:25px;
-
     text-decoration:none;
-
     color:black;
-
-    box-shadow:
-    0 6px 20px rgba(0,0,0,.08);
-
+    box-shadow:0 6px 20px rgba(0,0,0,.08);
     transition:.3s;
 }
 
 .card:hover{
-
     transform:translateY(-8px);
-
-    box-shadow:
-    0 10px 30px rgba(0,0,0,.15);
+    box-shadow:0 10px 30px rgba(0,0,0,.15);
 }
 
 .icon{
-
     width:70px;
     height:70px;
-
     border-radius:15px;
-
     display:flex;
-
     justify-content:center;
     align-items:center;
-
     font-size:35px;
-
     margin-bottom:20px;
 }
 
-.jpg{
-    background:#ffe7aa;
-}
+.jpg{background:#ffe7aa;}
+.compress{background:#cef0c7;}
+.pdf{background:#ffc6c6;}
+.png{background:#d7e8ff;}
 
-.compress{
-    background:#cef0c7;
-}
-
-.pdf{
-    background:#ffc6c6;
-}
-
-.png{
-    background:#d7e8ff;
-}
-
-h2{
-    margin-bottom:10px;
-}
+h2{margin-bottom:10px;}
 
 p{
     color:#666;
@@ -124,100 +98,304 @@ p{
 }
 
 @keyframes scroll{
+    from{transform:translateX(-100%);}
+    to{transform:translateX(100vw);}
+}
 
-    from{
-        transform:
-        translateX(-100%);
+/* WHATSAPP STYLE PROFILE */
+
+.profile-area{
+    position:absolute;
+    top:37px;
+    right:22px;
+    z-index:1000;
+}
+
+.profile-button{
+    width:46px;
+    height:46px;
+    border:3px solid rgba(255,255,255,.8);
+    border-radius:50%;
+    background:#075e54;
+    color:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    cursor:pointer;
+    font-size:21px;
+    transition:.2s;
+    box-shadow:0 3px 10px rgba(0,0,0,.2);
+}
+
+.profile-button:hover{
+    background:#128c7e;
+    transform:scale(1.07);
+}
+
+.profile-dropdown{
+    display:block;
+    visibility:hidden;
+    opacity:0;
+    transform:translateY(-10px) scale(.96);
+    transform-origin:top right;
+    pointer-events:none;
+
+    position:absolute;
+    right:0;
+    top:58px;
+
+    width:290px;
+    background:white;
+    border-radius:14px;
+    overflow:hidden;
+
+    box-shadow:0 10px 35px rgba(0,0,0,.22);
+    transition:opacity .2s ease, transform .2s ease, visibility .2s;
+}
+
+.profile-dropdown.show{
+    visibility:visible;
+    opacity:1;
+    transform:translateY(0) scale(1);
+    pointer-events:auto;
+}
+
+.profile-top{
+    background:#075e54;
+    padding:23px 18px;
+    color:white;
+    text-align:center;
+}
+
+.profile-avatar{
+    width:65px;
+    height:65px;
+    margin:0 auto 12px;
+    background:#ffffff;
+    color:#075e54;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:31px;
+    border:3px solid rgba(255,255,255,.7);
+}
+
+.profile-top h3{
+    font-size:17px;
+    margin-bottom:6px;
+    font-weight:600;
+}
+
+.profile-top p{
+    color:#d9f5ed;
+    font-size:12px;
+    overflow-wrap:anywhere;
+    line-height:1.5;
+}
+
+.profile-info{
+    padding:15px 18px;
+}
+
+.profile-info small{
+    color:#888;
+    font-size:11px;
+    display:block;
+    margin-bottom:5px;
+}
+
+#profileEmail{
+    display:block;
+    color:#333;
+    font-size:13px;
+    overflow-wrap:anywhere;
+    line-height:1.5;
+}
+
+.profile-divider{
+    height:1px;
+    background:#eee;
+}
+
+.profile-logout{
+    width:100%;
+    padding:15px 18px;
+    border:none;
+    background:white;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    color:#e53935;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    transition:.2s;
+}
+
+.profile-logout:hover{
+    background:#fff1f0;
+}
+
+.logout-icon{
+    width:32px;
+    height:32px;
+    background:#ffebee;
+    border-radius:50%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:17px;
+}
+
+.profile-button:focus-visible,
+.profile-logout:focus-visible{
+    outline:3px solid #25d366;
+    outline-offset:3px;
+}
+
+@media(max-width:600px){
+
+    .profile-area{
+        top:10px;
+        right:12px;
     }
 
-    to{
-        transform:
-        translateX(100vw);
+    .profile-button{
+        width:40px;
+        height:40px;
+        font-size:19px;
     }
+
+    .profile-dropdown{
+        width:min(290px, calc(100vw - 24px));
+        top:50px;
+    }
+
+    .header{
+        padding:25px 55px;
+        font-size:25px;
+    }
+
 }
 
 </style>
-
 </head>
 
 <body>
 
+<!-- WHATSAPP STYLE PROFILE MENU -->
+
+<div class="profile-area">
+
+    <button id="profileButton"
+            class="profile-button"
+            aria-label="Open profile menu"
+            aria-expanded="false">
+        👤
+    </button>
+
+    <div id="profileDropdown" class="profile-dropdown">
+
+        <div class="profile-top">
+
+            <div class="profile-avatar">👤</div>
+
+            <h3>My Account</h3>
+
+            <p>MD Tausif Tools</p>
+
+        </div>
+
+        <div class="profile-info">
+
+            <small>LOGGED IN AS</small>
+
+            <span id="profileEmail"></span>
+
+        </div>
+
+        <div class="profile-divider"></div>
+
+        <button id="logoutButton" class="profile-logout">
+
+            <span class="logout-icon">↪</span>
+
+            <span>Logout</span>
+
+        </button>
+
+    </div>
+
+</div>
+
 <div class="notice-bar">
-
-<div class="notice-text">
-
-This Website Is Created By Md Tausif Ali &
-Use This For Only Personal Use
-
+    <div class="notice-text">
+        This Website Is Created By Md Tausif Ali &
+        Use This For Only Personal Use
+    </div>
 </div>
-
-</div>
-
 
 <div class="grid">
 
 <a href="jpg-to-pdf.html" class="card">
-
-<div class="icon jpg">
-📄
-</div>
-
-<h2>JPG to PDF</h2>
-
-<p>
-Convert one or multiple JPG images
-into a PDF file.
-</p>
-
+    <div class="icon jpg">📄</div>
+    <h2>JPG to PDF</h2>
+    <p>Convert one or multiple JPG images into a PDF file.</p>
 </a>
 
-<a href="image-compressor.html"
-class="card">
-
-<div class="icon compress">
-🖼️
-</div>
-
-<h2>Image Compressor</h2>
-
-<p>
-Compress images to a custom file
-size while maintaining quality.
-</p>
-
+<a href="image-compressor.html" class="card">
+    <div class="icon compress">🖼️</div>
+    <h2>Image Compressor</h2>
+    <p>Compress images to a custom file size while maintaining quality.</p>
 </a>
 
 <a href="pdf-compressor.html" class="card">
-
-<div class="icon pdf">
-📕
-</div>
-
-<h2>PDF Compressor</h2>
-
-<p>
-Reduce PDF size for forms,
-applications and sharing.
-</p>
-
+    <div class="icon pdf">📕</div>
+    <h2>PDF Compressor</h2>
+    <p>Reduce PDF size for forms, applications and sharing.</p>
 </a>
 
 <a href="#" class="card">
-
-<div class="icon png">
-🖼️
-</div>
-
-<h2>PNG to JPG</h2>
-
-<p>
-Convert PNG images into JPG
-format instantly.
-</p>
-
+    <div class="icon png">🖼️</div>
+    <h2>PNG to JPG</h2>
+    <p>Convert PNG images into JPG format instantly.</p>
 </a>
 
 </div>
 
-</body>
-</html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+
+<script>
+const profileButton = document.getElementById("profileButton");
+const profileDropdown = document.getElementById("profileDropdown");
+
+profileButton.addEventListener("click", function(event){
+
+    event.stopPropagation();
+
+    profileDropdown.classList.toggle("show");
+
+    profileButton.setAttribute(
+        "aria-expanded",
+        profileDropdown.classList.contains("show")
+    );
+
+});
+
+document.addEventListener("click", function(event){
+
+    if(
+        !profileButton.contains(event.target) &&
+        !profileDropdown.contains(event.target)
+    ){
+
+        profileDropdown.classList.remove("show");
+        profileButton.setAttribute("aria-expanded","false");
+
+    }
+
+});
+
+</script
