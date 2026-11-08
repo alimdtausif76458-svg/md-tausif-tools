@@ -47,7 +47,12 @@ const supabaseClient = supabase.createClient(
 // COMMON HELPERS
 // ========================================
 
-const currentPage = window.location.pathname.split("/").pop() || "index.html";
+const pagePath = window.location.pathname.replace(/\/+$/, "");
+const pageName = pagePath.split("/").pop() || "index";
+
+const currentPage = pageName.includes(".")
+    ? pageName
+    : pageName + ".html";
 
 const publicPages = [
     "login.html",
@@ -87,6 +92,14 @@ function setButtonLoading(button, loading, originalText) {
     }
 
     const session = data?.session;
+
+
+
+
+
+
+
+
 
     // Login / Signup pages
     if (currentPage === "login.html" || currentPage === "signup.html") {
