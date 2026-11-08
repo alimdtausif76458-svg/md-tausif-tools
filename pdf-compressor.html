@@ -576,13 +576,14 @@ body {
 
 <script>
 
-// After deploying the backend, replace this value with its HTTPS URL.
-// Example: https://your-pdf-backend.onrender.com
+// BACKEND URL
+
 const API_BASE_URL = "https://md-tausif-backend.onrender.com";
 
 let selectedPDF = null;
 let previewURL = null;
 let polling = false;
+
 
 // SHOW TARGET INPUT
 
@@ -610,6 +611,7 @@ radios.forEach(radio => {
 });
 
 updateTargetBox();
+
 
 // PDF SELECTION
 
@@ -658,6 +660,7 @@ document.getElementById("pdfInput")
 
 });
 
+
 // UPDATE PROGRESS
 
 function updateProgress(percent, message) {
@@ -679,9 +682,10 @@ function updateProgress(percent, message) {
 
 }
 
-// BACKEND PROGRESS POLLING
 
-async function startProgressPolling(jobId) {
+// BACKEND PROGRESS POLLING WITH AUTHENTICATION
+
+async function startProgressPolling(jobId, accessToken) {
 
     polling = true;
 
@@ -693,7 +697,12 @@ async function startProgressPolling(jobId) {
 
             const response = await fetch(
                 API_BASE_URL + "/progress/" +
-                encodeURIComponent(jobId)
+                encodeURIComponent(jobId),
+                {
+                    headers: {
+                        "Authorization": `Bearer ${accessToken}`
+                    }
+                }
             );
 
             if (response.ok) {
@@ -733,6 +742,17 @@ async function startProgressPolling(jobId) {
 
                 }
 
+            } else if (
+                response.status === 401 ||
+                response.status === 403
+            ) {
+
+                console.log("Progress authentication failed.");
+
+                polling = false;
+
+                break;
+
             }
 
         } catch (error) {
@@ -749,7 +769,8 @@ async function startProgressPolling(jobId) {
 
 }
 
-// PDF COMPRESSION
+
+// PDF COMPRESSION WITH AUTHENTICATION
 
 async function compressPDF() {
 
@@ -772,6 +793,9 @@ async function compressPDF() {
     const progressContainer =
         document.getElementById("progressContainer");
 
+
+    // CHECK PDF
+
     if (!file) {
 
         alert("Please select PDF first.");
@@ -779,6 +803,9 @@ async function compressPDF() {
         return;
 
     }
+
+
+    // CHECK TARGET SIZE
 
     if (
         level === "target" &&
@@ -797,6 +824,9 @@ async function compressPDF() {
 
     }
 
+
+    // PREPARE FORM DATA
+
     const formData = new FormData();
 
     formData.append("pdf", file);
@@ -809,9 +839,11 @@ async function compressPDF() {
 
     }
 
+
     const jobId =
         "job-" + Date.now() + "-" +
         Math.random().toString(36).substring(2, 10);
+
 
     btn.disabled = true;
 
@@ -821,11 +853,47 @@ async function compressPDF() {
 
     progressContainer.style.display = "block";
 
-    updateProgress(1, "Uploading PDF...");
+    updateProgress(1, "Checking login session...");
 
     polling = false;
 
+
     try {
+
+        // GET SUPABASE LOGIN SESSION
+
+        if (!window.supabaseClient) {
+
+            throw new Error(
+                "Authentication system not loaded. Please refresh the page."
+            );
+
+        }
+
+        const {
+            data: sessionData,
+            error: sessionError
+        } = await window.supabaseClient.auth.getSession();
+
+
+        const accessToken =
+            sessionData?.session?.access_token;
+
+
+        // CHECK ACCESS TOKEN
+
+        if (sessionError || !accessToken) {
+
+            throw new Error(
+                "Your login session has expired. Please login again."
+            );
+
+        }
+
+
+        // SEND PDF TO BACKEND WITH JWT TOKEN
+
+        updateProgress(2, "Uploading PDF...");
 
         const responsePromise = fetch(
             API_BASE_URL + "/compress",
@@ -833,16 +901,24 @@ async function compressPDF() {
                 method: "POST",
 
                 headers: {
-                    "X-Job-Id": jobId
+                    "X-Job-Id": jobId,
+                    "Authorization": `Bearer ${accessToken}`
                 },
 
                 body: formData
             }
         );
 
-        startProgressPolling(jobId);
+
+        // START AUTHENTICATED PROGRESS POLLING
+
+        startProgressPolling(jobId, accessToken);
+
+
+        // WAIT FOR COMPRESSION RESPONSE
 
         const response = await responsePromise;
+
 
         if (!response.ok) {
 
@@ -860,6 +936,9 @@ async function compressPDF() {
 
         }
 
+
+        // GET COMPRESSED PDF
+
         const blob = await response.blob();
 
         if (!blob.size) {
@@ -868,12 +947,16 @@ async function compressPDF() {
 
         }
 
+
         polling = false;
 
         updateProgress(
             100,
             "Compression completed successfully!"
         );
+
+
+        // DOWNLOAD PDF
 
         const downloadURL = URL.createObjectURL(blob);
 
@@ -895,6 +978,9 @@ async function compressPDF() {
 
         }, 3000);
 
+
+        // CALCULATE FILE SIZE
+
         const compressedSize =
             Number(response.headers.get("X-Output-Size-KB")) ||
             blob.size / 1024;
@@ -905,6 +991,9 @@ async function compressPDF() {
             ((originalSize - compressedSize) /
             originalSize) * 100
         ).toFixed(2);
+
+
+        // SHOW RESULT
 
         result.innerHTML =
 
@@ -931,7 +1020,7 @@ async function compressPDF() {
 
         updateProgress(0, "Compression failed.");
 
-        result.innerHTML =
+        result.textContent =
             "Error: " + error.message;
 
     }
@@ -950,8 +1039,11 @@ async function compressPDF() {
 
 </script>
 
+
 <!-- SUPABASE AUTHENTICATION -->
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script src="auth.js"></script>
 
 </body>

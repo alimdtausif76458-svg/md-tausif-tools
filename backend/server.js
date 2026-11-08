@@ -19,10 +19,61 @@ const { execFile } = require("child_process");
 const { promisify } = require("util");
 const crypto = require("crypto");
 
+require("dotenv").config();
+const { createClient } = require("@supabase/supabase-js");
+
 const app = express();
 const execFileAsync = promisify(execFile);
 
 const PORT = process.env.PORT || 3000;
+
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_PUBLISHABLE_KEY
+);
+
+
+// =====================================
+// SUPABASE AUTHENTICATION MIDDLEWARE
+// =====================================
+
+async function verifyUser(req, res, next) {
+
+    try {
+
+        const authHeader = req.headers.authorization;
+
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return res.status(401).json({
+                error: "Authentication required. Please login."
+            });
+        }
+
+        const token = authHeader.split(" ")[1];
+
+        const { data, error } = await supabase.auth.getUser(token);
+
+        if (error || !data.user) {
+            return res.status(401).json({
+                error: "Invalid or expired login session."
+            });
+        }
+
+        req.user = data.user;
+
+        next();
+
+    } catch (error) {
+
+        console.error("Authentication error:", error.message);
+
+        return res.status(401).json({
+            error: "Authentication failed."
+        });
+
+    }
+
+}
 
 // Set GS_PATH in hosting environment if Ghostscript is not on PATH.
 // Windows local development uses the user's installed Ghostscript path;
@@ -88,8 +139,9 @@ function setProgress(jobId, percent, message, status = "processing") {
     if (!jobId) return;
 
     const currentJob = progressJobs.get(jobId) || {
-        history: []
-    };
+    history: [],
+    ownerUserId: null
+};
 
     const update = {
         percent: Math.min(100, Math.max(0, Math.floor(percent))),
@@ -111,7 +163,7 @@ function setProgress(jobId, percent, message, status = "processing") {
 // PROGRESS API
 // =====================================
 
-app.get("/progress/:jobId", (req, res) => {
+app.get("/progress/:jobId", verifyUser, (req, res) => {
 
     const job = progressJobs.get(req.params.jobId);
 
@@ -120,6 +172,13 @@ app.get("/progress/:jobId", (req, res) => {
             error: "Progress job not found"
         });
     }
+
+
+    if (job.ownerUserId !== req.user.id) {
+    return res.status(404).json({
+        error: "Progress job not found"
+    });
+}
 
     res.json({
         percent: job.percent,
@@ -331,6 +390,8 @@ const compressionSettings = {
 app.post(
     "/compress",
 
+    verifyUser,
+
     (req, res, next) => {
 
         const jobId =
@@ -338,13 +399,17 @@ app.post(
 
         req.jobId = jobId;
 
-        setProgress(
-            jobId,
-            1,
-            "Preparing PDF compression..."
-        );
+    setProgress(
+    jobId,
+    1,
+    "Preparing PDF compression..."
+);
 
-        next();
+// Save the owner of this compression job
+const job = progressJobs.get(jobId);
+job.ownerUserId = req.user.id;
+
+next();
 
     },
 
